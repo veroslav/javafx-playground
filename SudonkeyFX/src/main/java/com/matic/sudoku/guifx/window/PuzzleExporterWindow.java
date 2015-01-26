@@ -20,19 +20,35 @@
 
 package com.matic.sudoku.guifx.window;
 
+import java.io.File;
 import java.util.Optional;
 
 import javafx.event.ActionEvent;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 
 import org.controlsfx.control.CheckComboBox;
+import org.controlsfx.tools.Borders;
 
-import com.matic.sudoku.Resources;
+import com.matic.sudoku.generator.Generator.Symmetry;
 import com.matic.sudoku.logic.LogicSolver.Grading;
+import com.matic.sudoku.Resources;
 
 /**
  * A window shown when the player wants to create and export puzzles to PDF.
@@ -43,12 +59,48 @@ import com.matic.sudoku.logic.LogicSolver.Grading;
  */
 public class PuzzleExporterWindow {
 	
-	private final CheckComboBox<String> gradingCheckCombo;
+	private static final String RANDOM = Resources.getTranslation("generate.random");
+	private static final String COUNT_VALIDATION_STRING = "0123456789";
+	private static final String DEFAULT_OUTPUT_FILE_NAME = "out.pdf";
+	private static final int MAX_PUZZLE_EXPORT_DIGITS = 3;
 	
-	final Dialog<ButtonType> window;
+	private final CheckComboBox<String> symmetryCheckCombo;
+	private final CheckComboBox<String> gradingCheckCombo;	
+	private final CheckComboBox<String> symbolTypeCombo;
+	private final ComboBox<String> puzzlesPerPageCombo;
+	private final ComboBox<String> creationModeCombo;
+	private final ComboBox<String> puzzleOrderCombo;
+	
+	private final CheckBox puzzleDifficultyCheck;
+	private final CheckBox puzzleNumberingCheck;
+	private final CheckBox fillPencilmarksCheck;
+	private final CheckBox appendSolutionsCheck;
+	
+	private final TextField puzzleCountField;
+	private final TextField outputPathField;
+	
+	private final Button browseButton;
+	
+	private final Dialog<ButtonType> window;
 
 	public PuzzleExporterWindow(final Window owner) {
+		symmetryCheckCombo = new CheckComboBox<>();
 		gradingCheckCombo = new CheckComboBox<>();
+		symbolTypeCombo = new CheckComboBox<>();
+		
+		puzzlesPerPageCombo = new ComboBox<>();
+		creationModeCombo = new ComboBox<>();
+		puzzleOrderCombo = new ComboBox<>();
+		
+		puzzleDifficultyCheck = new CheckBox(Resources.getTranslation("generate.show_difficulties"));
+		puzzleNumberingCheck = new CheckBox(Resources.getTranslation("generate.show_numberings"));
+		fillPencilmarksCheck = new CheckBox(Resources.getTranslation("puzzle.fill_pencilmarks"));
+		appendSolutionsCheck = new CheckBox(Resources.getTranslation("export.append_solutions"));
+		
+		puzzleCountField = new TextField();
+		outputPathField = new TextField();
+		
+		browseButton = new Button(Resources.getTranslation("button.browse"));
 		
 		window = new Dialog<>();
 		window.initOwner(owner);
@@ -70,10 +122,42 @@ public class PuzzleExporterWindow {
 	}
 	
 	private void initComponents() {
+		outputPathField.setPrefColumnCount(30);
+		outputPathField.setTooltip(new Tooltip("Where to store the generated PDF file"));
+		
+		puzzleCountField.setPrefColumnCount(MAX_PUZZLE_EXPORT_DIGITS);		
+		//puzzleCountField.setStyle("-fx-border-color: #e00;");		
+		puzzleCountField.setTooltip(new Tooltip("How many puzzles are going to be generated"));
+		
+		browseButton.setOnAction(event -> onBrowse());
+		
+		puzzlesPerPageCombo.getItems().addAll("4", "2", "1");
+		puzzlesPerPageCombo.getSelectionModel().select(0);
+		
+		puzzleDifficultyCheck.setSelected(true);
+		puzzleNumberingCheck.setSelected(true);
+		
+		creationModeCombo.getItems().addAll(Resources.getTranslation("generate.new_puzzle"),
+				Resources.getTranslation("generate.blank_puzzle"));
+		//creationModeCombo.setOnAction(event -> onCreationModeChanged());
+		creationModeCombo.getSelectionModel().select(0);
+		
 		for(final Grading grading : Grading.values()) {
 			gradingCheckCombo.getItems().add(grading.getDescription());
 		}
 		gradingCheckCombo.getCheckModel().checkAll();
+		
+		for(final Symmetry symmetry : Symmetry.values()) {
+			symmetryCheckCombo.getItems().add(symmetry.getDescription());
+		}		
+		symmetryCheckCombo.getCheckModel().checkAll();
+		
+		symbolTypeCombo.getItems().addAll(Resources.getTranslation("symbols.digits"),
+				Resources.getTranslation("symbols.letters"));
+		symbolTypeCombo.getCheckModel().checkAll();
+		
+		puzzleOrderCombo.getItems().addAll(RANDOM, Resources.getTranslation("generate.difficulty"));
+		puzzleOrderCombo.getSelectionModel().select(0);
 		
 		window.setHeaderText(null);
 		window.setTitle(Resources.getTranslation("generate.export.title"));
@@ -83,7 +167,8 @@ public class PuzzleExporterWindow {
 		
 		window.getDialogPane().getButtonTypes().addAll(exportButtonType, ButtonType.CANCEL);
 		
-		final Button okButton = (Button)window.getDialogPane().lookupButton(exportButtonType);		
+		final Button okButton = (Button)window.getDialogPane().lookupButton(exportButtonType);	
+		okButton.setDisable(true);		
 		okButton.addEventFilter(ActionEvent.ACTION, event -> {
 			//Prevent window from closing until player input has been validated
 			if(!validateInput()) {
@@ -91,10 +176,151 @@ public class PuzzleExporterWindow {
 			}
 		});
 		
-		window.getDialogPane().setContent(gradingCheckCombo);
+		setupInputValidation(okButton);
+		
+		//window.setResizable(true);
+		window.getDialogPane().setContent(layoutContent());
+	}
+	
+	private void setupInputValidation(final Button exportButton) {
+		outputPathField.textProperty().addListener((observable, oldValue, newValue) ->
+			exportButton.setDisable(!validateInput())
+		);
+		puzzleCountField.textProperty().addListener((observable, oldValue, newValue) -> 
+			exportButton.setDisable(!validateInput())
+		);			
+		puzzleCountField.addEventFilter(KeyEvent.KEY_TYPED, event -> {
+			//Disallow typing anything else than numbers
+			if (!COUNT_VALIDATION_STRING.contains(event.getCharacter()) ||
+					puzzleCountField.getText().length() == MAX_PUZZLE_EXPORT_DIGITS) {
+                event.consume();
+            }
+		});		
+	}
+	
+	private Pane layoutContent() {
+		setComponentWidths(300);
+		
+		final Pane browsePane = buildBrowsePane();		
+		final Pane generatorOptionsPane = buildGeneratorPane();
+		final Pane formattingOptionsPane = buildFormattingPane(); 
+		final Pane pdfOptionsPane = buildPdfOptionsPane();
+		
+		BorderPane.setMargin(outputPathField, new Insets(0,5,0,5));
+		BorderPane.setMargin(browseButton, new Insets(0,5,0,5));
+		
+		final Node borderedBrowsePane = Borders.wrap(
+				browsePane).etchedBorder().title(
+						Resources.getTranslation("export.border.output")).buildAll();
+		
+		final Node borderedGeneratorOptionsPane = Borders.wrap(
+				generatorOptionsPane).etchedBorder().title(
+						Resources.getTranslation("export.border.generator")).buildAll();
+		
+		final Node borderedFormattingOptionsPane = Borders.wrap(
+				formattingOptionsPane).etchedBorder().title("Formatting options").buildAll();
+		
+		final Node borderedPdfOptionsPane = Borders.wrap(
+				pdfOptionsPane).etchedBorder().title("PDF printing options").buildAll();
+		
+		final VBox mainPane = new VBox(8);	
+		mainPane.getChildren().addAll(borderedBrowsePane, borderedGeneratorOptionsPane,
+				borderedFormattingOptionsPane, borderedPdfOptionsPane);
+		
+		return mainPane;
+	}
+	
+	private void setComponentWidths(final double width) {
+		//mainPane.prefWidthProperty().bind(window.widthProperty());
+		//mainPane.prefHeightProperty().bind(window.heightProperty());
+		
+		symmetryCheckCombo.setMinWidth(width);
+		symmetryCheckCombo.setMaxWidth(width);
+		
+		gradingCheckCombo.setMinWidth(width);
+		gradingCheckCombo.setMaxWidth(width);
+		
+		//creationModeCombo.setMinWidth(width);
+		//creationModeCombo.setMaxWidth(width);
+	}
+	
+	private Pane buildPdfOptionsPane() {
+		final VBox pdfOptionsPane = new VBox(8);
+		
+		pdfOptionsPane.getChildren().addAll(puzzleNumberingCheck, puzzleDifficultyCheck,
+				fillPencilmarksCheck, appendSolutionsCheck);
+		
+		return pdfOptionsPane;
+	}
+	
+	private Pane buildFormattingPane() {
+		final GridPane formattingPane = new GridPane();
+		formattingPane.setPadding(new Insets(10, 10, 10, 10));
+		formattingPane.setHgap(5);
+		formattingPane.setVgap(10);
+		
+		formattingPane.add(new Label(Resources.getTranslation("export.puzzle_ordering") + ": "), 0, 0);
+		formattingPane.add(puzzleOrderCombo, 1, 0);
+		formattingPane.add(new Label(Resources.getTranslation("export.puzzles_per_page") + ": "), 0, 1);
+		formattingPane.add(puzzlesPerPageCombo, 1, 1);
+		
+		return formattingPane;
+	}
+	
+	private Pane buildGeneratorPane() {
+		final GridPane generatorOptionsPane = new GridPane();
+		generatorOptionsPane.setPadding(new Insets(10, 10, 10, 10));
+		generatorOptionsPane.setHgap(5);
+		generatorOptionsPane.setVgap(10);
+		
+		generatorOptionsPane.add(new Label(Resources.getTranslation("puzzle.create") + ": "), 0, 0);
+		generatorOptionsPane.add(creationModeCombo, 1, 0);
+		generatorOptionsPane.add(new Label(Resources.getTranslation("symbols.label") + ":"), 0, 1);
+		generatorOptionsPane.add(symbolTypeCombo, 1, 1);
+		generatorOptionsPane.add(new Label(Resources.getTranslation("generate.difficulty") + ":"), 0, 2);
+		generatorOptionsPane.add(gradingCheckCombo, 1, 2);
+		generatorOptionsPane.add(new Label(Resources.getTranslation("symmetry.name") + ":"), 0, 3);
+		generatorOptionsPane.add(symmetryCheckCombo, 1, 3);	
+		generatorOptionsPane.add(new Label(Resources.getTranslation("export.puzzle_count") + ":"), 0, 4);
+		generatorOptionsPane.add(puzzleCountField, 1, 4);		
+		
+		return generatorOptionsPane;
+	}
+	
+	private Pane buildBrowsePane() {
+		final BorderPane browsePane = new BorderPane();				
+		browsePane.setPadding(new Insets(10, 10, 10, 10));		
+		browsePane.setCenter(outputPathField);
+		browsePane.setRight(browseButton);
+		
+		return browsePane;
+	}
+	
+	private void onBrowse() {
+		final DirectoryChooser pathChooser = new DirectoryChooser();
+		pathChooser.setInitialDirectory(new File(System.getProperty("user.home")));
+		pathChooser.setTitle("Browse");
+		
+		final File selectedFile = pathChooser.showDialog(window.getOwner());		
+		
+		if(selectedFile != null) {
+			final String path = selectedFile.getAbsolutePath().concat(
+					System.getProperty("file.separator").concat(DEFAULT_OUTPUT_FILE_NAME));
+			outputPathField.setText(path);
+		}
 	}
 	
 	private boolean validateInput() {
+		final String puzzleCount = puzzleCountField.getText().trim();
+		if("".equals(puzzleCount) || puzzleCount.length() > MAX_PUZZLE_EXPORT_DIGITS) {
+			return false;
+		}
+		if(Integer.parseInt(puzzleCount) == 0) {
+			return false;
+		}
+		if("".equals(outputPathField.getText().trim())) {
+			return false;
+		}
 		return true;
 	}
 }
