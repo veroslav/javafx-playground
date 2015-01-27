@@ -31,7 +31,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
-import com.matic.sudoku.Resources;
 import com.matic.sudoku.guifx.action.undo.UndoableCellValueEditAction;
 import com.matic.sudoku.guifx.action.undo.UndoableColorEditAction;
 import com.matic.sudoku.guifx.action.undo.UndoableGameBoardAction;
@@ -42,38 +41,6 @@ import com.sun.javafx.tk.FontMetrics;
 import com.sun.javafx.tk.Toolkit;
 
 public class ClassicGameBoard extends Canvas implements GameBoard {
-	
-	public enum SymbolType {
-		DIGITS(Resources.getTranslation("symbols.digits")),
-		LETTERS(Resources.getTranslation("symbols.letters"));
-		
-		private final String description;
-		
-		SymbolType(final String type) {
-			this.description = type;
-		}
-		
-		public String getDescription() {
-			return description;
-		}
-		
-		public static SymbolType fromString(final String symbols) {
-			if(symbols != null) {
-				for(final SymbolType type : SymbolType.values()) {
-					if(type.description.equals(symbols)) {
-						return type;
-					}
-				}
-			}
-			
-			throw new IllegalArgumentException("No symbol type with description "
-					+ symbols + " found");
-		}
-		
-		public static SymbolType getRandom() {
-			return values()[(int)(Math.random() * values().length)];
-		}
-	}
 	
 	public static final String[] KEY_NUMBER_ACTIONS = {"1", "2", "3", "4",
 		"5", "6", "7", "8", "9"};

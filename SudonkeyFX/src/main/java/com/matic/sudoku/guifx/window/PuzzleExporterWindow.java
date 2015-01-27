@@ -21,11 +21,18 @@
 package com.matic.sudoku.guifx.window;
 
 import java.io.File;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
@@ -45,8 +52,12 @@ import javafx.stage.Window;
 
 import org.controlsfx.control.CheckComboBox;
 import org.controlsfx.tools.Borders;
+import org.controlsfx.validation.ValidationSupport;
+import org.controlsfx.validation.Validator;
 
 import com.matic.sudoku.generator.Generator.Symmetry;
+import com.matic.sudoku.guifx.board.GameBoard.SymbolType;
+import com.matic.sudoku.guifx.window.PuzzleExporterOptions.Ordering;
 import com.matic.sudoku.logic.LogicSolver.Grading;
 import com.matic.sudoku.Resources;
 
@@ -64,9 +75,9 @@ public class PuzzleExporterWindow {
 	private static final String DEFAULT_OUTPUT_FILE_NAME = "out.pdf";
 	private static final int MAX_PUZZLE_EXPORT_DIGITS = 3;
 	
+	private final CheckComboBox<String> symbolTypeCheckCombo;
 	private final CheckComboBox<String> symmetryCheckCombo;
-	private final CheckComboBox<String> gradingCheckCombo;	
-	private final CheckComboBox<String> symbolTypeCombo;
+	private final CheckComboBox<String> gradingCheckCombo;		
 	private final ComboBox<String> puzzlesPerPageCombo;
 	private final ComboBox<String> creationModeCombo;
 	private final ComboBox<String> puzzleOrderCombo;
@@ -84,9 +95,9 @@ public class PuzzleExporterWindow {
 	private final Dialog<ButtonType> window;
 
 	public PuzzleExporterWindow(final Window owner) {
+		symbolTypeCheckCombo = new CheckComboBox<>();
 		symmetryCheckCombo = new CheckComboBox<>();
-		gradingCheckCombo = new CheckComboBox<>();
-		symbolTypeCombo = new CheckComboBox<>();
+		gradingCheckCombo = new CheckComboBox<>();		
 		
 		puzzlesPerPageCombo = new ComboBox<>();
 		creationModeCombo = new ComboBox<>();
@@ -115,18 +126,70 @@ public class PuzzleExporterWindow {
 	 */
 	public PuzzleExporterOptions showAndWait() {
 		final Optional<ButtonType> result = window.showAndWait();
-		if(result.isPresent() && result.get() == ButtonType.OK) {
-			return new PuzzleExporterOptions();
+		
+		if(result.isPresent() && result.get().getButtonData() == ButtonData.OK_DONE) {				
+			final boolean isEmptyGrid = creationModeCombo.getSelectionModel()
+					 .getSelectedIndex() == 1;
+			final int puzzlesPerPage = Integer.parseInt(puzzlesPerPageCombo
+					.getSelectionModel().getSelectedItem());
+			final int puzzleCount = Integer.parseInt(puzzleCountField.getText());
+			
+			return new PuzzleExporterOptions(getSelectedSymbolTypes(), getSelectedSymmetries(),
+					getSelectedGradings(), puzzleNumberingCheck.isSelected(),
+					puzzleDifficultyCheck.isSelected(), fillPencilmarksCheck.isSelected(),
+					appendSolutionsCheck.isSelected(), isEmptyGrid,
+					Ordering.fromString(puzzleOrderCombo.getSelectionModel().getSelectedItem()),
+					outputPathField.getText(), puzzlesPerPage, puzzleCount);
 		}
 		return null;
 	}
 	
+	private List<Grading> getSelectedGradings() {
+		final ObservableList<String> selectedGradings = gradingCheckCombo.getCheckModel().getCheckedItems();		
+		final List<Grading> chosenGradings = selectedGradings.stream().map(
+				gradingName -> Grading.fromString(gradingName)).collect(Collectors.toList());
+		
+		return Collections.unmodifiableList(chosenGradings);
+	}
+	
+	private List<Symmetry> getSelectedSymmetries() {
+		final ObservableList<String> selectedSymmetries = symmetryCheckCombo.getCheckModel().getCheckedItems();
+		final List<Symmetry> chosenSymmetries = selectedSymmetries.stream().map(
+				symmetryName -> Symmetry.fromString(symmetryName)).collect(Collectors.toList());
+		
+		return Collections.unmodifiableList(chosenSymmetries);
+	}
+	
+	private List<SymbolType> getSelectedSymbolTypes() {
+		final ObservableList<String> selectedSymbolTypes = symbolTypeCheckCombo.getCheckModel().getCheckedItems();
+		final List<SymbolType> chosenSymbolTypes = selectedSymbolTypes.stream().map(
+				symbolType -> SymbolType.fromString(symbolType)).collect(Collectors.toList());
+		
+		return Collections.unmodifiableList(chosenSymbolTypes);
+	}
+	
+	private void onCreationModeChanged(final Button exportButton) {
+		final int selectedModeIndex = creationModeCombo.getSelectionModel().getSelectedIndex();		
+		setComponentsDisabled(selectedModeIndex != 0);
+		exportButton.setDisable(!validateInput());
+	}
+	
+	//Disable certain options that are usable only when generating new puzzles
+	private void setComponentsDisabled(final boolean disabled) {
+		puzzleDifficultyCheck.setDisable(disabled);		
+		appendSolutionsCheck.setDisable(disabled);
+		symmetryCheckCombo.setDisable(disabled);
+		gradingCheckCombo.setDisable(disabled);
+		puzzleOrderCombo.setDisable(disabled);
+		symbolTypeCheckCombo.setDisable(disabled);
+	}
+	
 	private void initComponents() {
 		outputPathField.setPrefColumnCount(30);
+		outputPathField.setEditable(false);
 		outputPathField.setTooltip(new Tooltip("Where to store the generated PDF file"));
 		
-		puzzleCountField.setPrefColumnCount(MAX_PUZZLE_EXPORT_DIGITS);		
-		//puzzleCountField.setStyle("-fx-border-color: #e00;");		
+		puzzleCountField.setPrefColumnCount(MAX_PUZZLE_EXPORT_DIGITS);			
 		puzzleCountField.setTooltip(new Tooltip("How many puzzles are going to be generated"));
 		
 		browseButton.setOnAction(event -> onBrowse());
@@ -138,8 +201,7 @@ public class PuzzleExporterWindow {
 		puzzleNumberingCheck.setSelected(true);
 		
 		creationModeCombo.getItems().addAll(Resources.getTranslation("generate.new_puzzle"),
-				Resources.getTranslation("generate.blank_puzzle"));
-		//creationModeCombo.setOnAction(event -> onCreationModeChanged());
+				Resources.getTranslation("generate.blank_puzzle"));		
 		creationModeCombo.getSelectionModel().select(0);
 		
 		for(final Grading grading : Grading.values()) {
@@ -152,9 +214,9 @@ public class PuzzleExporterWindow {
 		}		
 		symmetryCheckCombo.getCheckModel().checkAll();
 		
-		symbolTypeCombo.getItems().addAll(Resources.getTranslation("symbols.digits"),
+		symbolTypeCheckCombo.getItems().addAll(Resources.getTranslation("symbols.digits"),
 				Resources.getTranslation("symbols.letters"));
-		symbolTypeCombo.getCheckModel().checkAll();
+		symbolTypeCheckCombo.getCheckModel().checkAll();
 		
 		puzzleOrderCombo.getItems().addAll(RANDOM, Resources.getTranslation("generate.difficulty"));
 		puzzleOrderCombo.getSelectionModel().select(0);
@@ -165,13 +227,16 @@ public class PuzzleExporterWindow {
 		final ButtonType exportButtonType = new ButtonType(
 				Resources.getTranslation("export.title"), ButtonData.OK_DONE);
 		
-		window.getDialogPane().getButtonTypes().addAll(exportButtonType, ButtonType.CANCEL);
+		final ButtonType cancelButtonType = new ButtonType(
+				Resources.getTranslation("button.cancel"), ButtonData.CANCEL_CLOSE);
+		
+		window.getDialogPane().getButtonTypes().addAll(exportButtonType, cancelButtonType);
 		
 		final Button okButton = (Button)window.getDialogPane().lookupButton(exportButtonType);	
 		okButton.setDisable(true);		
 		okButton.addEventFilter(ActionEvent.ACTION, event -> {
 			//Prevent window from closing until player input has been validated
-			if(!validateInput()) {
+			if(!validateInput() || !onOverwriteExistingFile()) {
 				event.consume();
 			}
 		});
@@ -182,7 +247,25 @@ public class PuzzleExporterWindow {
 		window.getDialogPane().setContent(layoutContent());
 	}
 	
+	private boolean onOverwriteExistingFile() {
+		final boolean outputPathExists = new File(outputPathField.getText()).exists();
+		if(outputPathExists) {
+			final Alert confirmFileReplaceAlert = new Alert(AlertType.CONFIRMATION);
+			confirmFileReplaceAlert.initOwner(window.getOwner());
+			confirmFileReplaceAlert.setContentText(Resources.getTranslation("file.exists.message"));
+			confirmFileReplaceAlert.setTitle(Resources.getTranslation("file.exists.title"));				
+			confirmFileReplaceAlert.setHeaderText(null);
+			
+			final Optional<ButtonType> playerChoice = confirmFileReplaceAlert.showAndWait();
+			if(playerChoice.get() != ButtonType.OK) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
 	private void setupInputValidation(final Button exportButton) {
+		creationModeCombo.setOnAction(event -> onCreationModeChanged(exportButton));
 		outputPathField.textProperty().addListener((observable, oldValue, newValue) ->
 			exportButton.setDisable(!validateInput())
 		);
@@ -196,6 +279,19 @@ public class PuzzleExporterWindow {
                 event.consume();
             }
 		});		
+		symmetryCheckCombo.getCheckModel().getCheckedItems().addListener(
+				(ListChangeListener.Change<? extends String> change) ->
+					exportButton.setDisable(!validateInput()));		
+		gradingCheckCombo.getCheckModel().getCheckedItems().addListener(
+				(ListChangeListener.Change<? extends String> change) ->
+					exportButton.setDisable(!validateInput()));
+		symbolTypeCheckCombo.getCheckModel().getCheckedItems().addListener(
+				(ListChangeListener.Change<? extends String> change) ->
+					exportButton.setDisable(!validateInput()));
+		
+		final ValidationSupport validationSupport = new ValidationSupport();
+		validationSupport.registerValidator(puzzleCountField, 
+				Validator.createEmptyValidator("Text is required"));
 	}
 	
 	private Pane layoutContent() {
@@ -276,7 +372,7 @@ public class PuzzleExporterWindow {
 		generatorOptionsPane.add(new Label(Resources.getTranslation("puzzle.create") + ": "), 0, 0);
 		generatorOptionsPane.add(creationModeCombo, 1, 0);
 		generatorOptionsPane.add(new Label(Resources.getTranslation("symbols.label") + ":"), 0, 1);
-		generatorOptionsPane.add(symbolTypeCombo, 1, 1);
+		generatorOptionsPane.add(symbolTypeCheckCombo, 1, 1);
 		generatorOptionsPane.add(new Label(Resources.getTranslation("generate.difficulty") + ":"), 0, 2);
 		generatorOptionsPane.add(gradingCheckCombo, 1, 2);
 		generatorOptionsPane.add(new Label(Resources.getTranslation("symmetry.name") + ":"), 0, 3);
@@ -320,6 +416,11 @@ public class PuzzleExporterWindow {
 		}
 		if("".equals(outputPathField.getText().trim())) {
 			return false;
+		}
+		if(creationModeCombo.getSelectionModel().getSelectedIndex() == 0) {
+			return symmetryCheckCombo.getCheckModel().getCheckedItems().size() > 0 &&
+					gradingCheckCombo.getCheckModel().getCheckedItems().size() > 0 &&
+					symbolTypeCheckCombo.getCheckModel().getCheckedItems().size() > 0;
 		}
 		return true;
 	}

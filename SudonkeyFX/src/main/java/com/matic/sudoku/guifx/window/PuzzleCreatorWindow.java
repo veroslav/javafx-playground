@@ -36,7 +36,7 @@ import javafx.scene.layout.Pane;
 
 import com.matic.sudoku.Resources;
 import com.matic.sudoku.generator.Generator.Symmetry;
-import com.matic.sudoku.guifx.board.ClassicGameBoard.SymbolType;
+import com.matic.sudoku.guifx.board.GameBoard.SymbolType;
 import com.matic.sudoku.guifx.board.GameBoard;
 import com.matic.sudoku.logic.LogicSolver.Grading;
 

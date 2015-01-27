@@ -21,7 +21,7 @@
 package com.matic.sudoku.guifx.window;
 
 import com.matic.sudoku.generator.Generator.Symmetry;
-import com.matic.sudoku.guifx.board.ClassicGameBoard.SymbolType;
+import com.matic.sudoku.guifx.board.GameBoard.SymbolType;
 import com.matic.sudoku.logic.LogicSolver.Grading;
 
 /**
