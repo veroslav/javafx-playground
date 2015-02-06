@@ -28,6 +28,9 @@ import java.util.Random;
 import java.util.ResourceBundle;
 import java.util.prefs.Preferences;
 
+import javafx.geometry.Insets;
+import javafx.scene.layout.GridPane;
+
 /**
  * Various resources (such as translations and images) used by the application
  * 
@@ -167,5 +170,23 @@ public class Resources {
 			}
 		}
 		return locales;
+	}
+	
+	public static class Gui {
+		//Max size, in pixels, of a label used in a layout
+		public static final int MAX_LABEL_COLUMN_WIDTH = 160;
+		
+		//Max size, in pixels, of comboboxes used in a layout
+		public static final int COMBOBOX_MAX_WIDTH = 300;
+		
+		//Size, in pixels, of empty space surrounding a layout's components
+		public static final int LAYOUT_PADDING = 5;
+		
+		public static void configurePadding(final GridPane pane) {
+			pane.setPadding(new Insets(LAYOUT_PADDING, LAYOUT_PADDING, 
+					LAYOUT_PADDING, LAYOUT_PADDING));
+			pane.setHgap(LAYOUT_PADDING);
+			pane.setVgap(LAYOUT_PADDING);
+		}
 	}
 }

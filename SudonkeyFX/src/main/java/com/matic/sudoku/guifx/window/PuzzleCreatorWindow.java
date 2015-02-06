@@ -20,24 +20,29 @@
 
 package com.matic.sudoku.guifx.window;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
-import org.controlsfx.tools.Borders;
-
-import javafx.geometry.Insets;
+import javafx.geometry.HPos;
 import javafx.scene.Node;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
+import javafx.stage.Window;
+
+import org.controlsfx.tools.Borders;
 
 import com.matic.sudoku.Resources;
 import com.matic.sudoku.generator.Generator.Symmetry;
-import com.matic.sudoku.guifx.board.GameBoard.SymbolType;
 import com.matic.sudoku.guifx.board.GameBoard;
+import com.matic.sudoku.guifx.board.GameBoard.SymbolType;
 import com.matic.sudoku.logic.LogicSolver.Grading;
 
 /**
@@ -57,15 +62,15 @@ public class PuzzleCreatorWindow {
 	private static final int[] GRID_DIMENSIONS = {GameBoard.DIMENSION_4x4,
 		GameBoard.DIMENSION_9x9, GameBoard.DIMENSION_16x16};
 	
-	final ComboBox<String> creationModeCombo;
-	final ComboBox<String> gradingCombo;
-	final ComboBox<String> symbolTypeCombo;
-	final ComboBox<String> symmetryCombo;
-	final ComboBox<String> gridDimensionCombo;
+	private final ComboBox<String> creationModeCombo;
+	private final ComboBox<String> gradingCombo;
+	private final ComboBox<String> symbolTypeCombo;
+	private final ComboBox<String> symmetryCombo;
+	private final ComboBox<String> gridDimensionCombo;
 	
-	final Dialog<ButtonType> window;
+	private final Dialog<ButtonType> window;
 	
-	public PuzzleCreatorWindow() {		
+	public PuzzleCreatorWindow(final Window owner) {		
 		creationModeCombo = new ComboBox<>();
 		gradingCombo = new ComboBox<>();
 		symbolTypeCombo = new ComboBox<>();
@@ -73,6 +78,7 @@ public class PuzzleCreatorWindow {
 		gridDimensionCombo = new ComboBox<>();
 		
 		window = new Dialog<>();
+		window.initOwner(owner);
 		
 		initComponents();
 	}
@@ -97,6 +103,8 @@ public class PuzzleCreatorWindow {
 	}
 	
 	private void initComponents() {
+		setMaxComboWidths(Resources.Gui.COMBOBOX_MAX_WIDTH);
+		
 		creationModeCombo.getItems().addAll(Resources.getTranslation("generate.new_puzzle"),
 				Resources.getTranslation("generate.blank_puzzle"));
 		creationModeCombo.setOnAction(event -> onCreationModeChanged());
@@ -131,51 +139,79 @@ public class PuzzleCreatorWindow {
 		
 		final BorderPane windowContent = new BorderPane();
 		windowContent.setTop(buildContent());
-		
-		window.getDialogPane().setContent(windowContent);
+		window.setResizable(true);
+		window.getDialogPane().setContent(windowContent);		
 	}
 
 	private Pane buildContent() {
 		final GridPane gridOptionsPane = new GridPane();
-		gridOptionsPane.setPadding(new Insets(10, 50, 10, 40));
-		gridOptionsPane.setHgap(10);
-		gridOptionsPane.setVgap(10);
+		Resources.Gui.configurePadding(gridOptionsPane);
 		
-		gridOptionsPane.add(new Label(Resources.getTranslation("puzzle.create") + ": "), 0, 0);
+		final ColumnConstraints labelColumnConstraints = new ColumnConstraints(
+				Resources.Gui.MAX_LABEL_COLUMN_WIDTH);		
+		final ColumnConstraints fieldColumnConstraints = new ColumnConstraints();		
+		
+		gridOptionsPane.getColumnConstraints().addAll(labelColumnConstraints, fieldColumnConstraints);
+		
+		final List<Label> gridOptionLabels = Arrays.asList(
+				new Label(Resources.getTranslation("puzzle.create") + ":"),
+				new Label(Resources.getTranslation("puzzle.type") + ":"));
+		
+		gridOptionLabels.stream().forEach(label -> GridPane.setHalignment(label, HPos.RIGHT));
+				
+		GridPane.setHalignment(creationModeCombo, HPos.LEFT);
+		GridPane.setHalignment(gridDimensionCombo, HPos.LEFT);
+		
+		gridOptionsPane.add(gridOptionLabels.get(0), 0, 0);
 		gridOptionsPane.add(creationModeCombo, 1, 0);
 		
-		gridOptionsPane.add(new Label(Resources.getTranslation("puzzle.type") + ": "), 0, 1);	
+		gridOptionsPane.add(gridOptionLabels.get(1), 0, 1);	
 		gridOptionsPane.add(gridDimensionCombo, 1, 1);
 		
 		final GridPane puzzleOptionsPane = new GridPane();
-		puzzleOptionsPane.setPadding(new Insets(10, 50, 10, 40));
-		puzzleOptionsPane.setHgap(10);
-		puzzleOptionsPane.setVgap(10);
+		Resources.Gui.configurePadding(puzzleOptionsPane);
 		
-		puzzleOptionsPane.add(new Label(Resources.getTranslation("symbols.label") + ": "), 0, 0);
-		puzzleOptionsPane.add(symbolTypeCombo, 1, 0);
+		puzzleOptionsPane.getColumnConstraints().addAll(labelColumnConstraints, fieldColumnConstraints);
 		
-		puzzleOptionsPane.add(new Label(Resources.getTranslation("generate.difficulty") + ": "), 0, 1);
+		final List<Label> puzzleOptionLabels = Arrays.asList(
+				new Label(Resources.getTranslation("symmetry.name") + ":"),
+				new Label(Resources.getTranslation("generate.difficulty") + ":"),
+				new Label(Resources.getTranslation("symbols.label") + ":"));
+		
+		puzzleOptionLabels.stream().forEach(label -> GridPane.setHalignment(label, HPos.RIGHT));
+				
+		GridPane.setHalignment(symmetryCombo, HPos.LEFT);
+		GridPane.setHalignment(gradingCombo, HPos.LEFT);
+		GridPane.setHalignment(symbolTypeCombo, HPos.LEFT);
+		
+		puzzleOptionsPane.add(puzzleOptionLabels.get(0), 0, 0);
+		puzzleOptionsPane.add(symmetryCombo, 1, 0);
+		
+		puzzleOptionsPane.add(puzzleOptionLabels.get(1), 0, 1);
 		puzzleOptionsPane.add(gradingCombo, 1, 1);
 		
-		puzzleOptionsPane.add(new Label(Resources.getTranslation("symmetry.name") + ": "), 0, 2);
-		puzzleOptionsPane.add(symmetryCombo, 1, 2);
+		puzzleOptionsPane.add(puzzleOptionLabels.get(2), 0, 2);
+		puzzleOptionsPane.add(symbolTypeCombo, 1, 2);
 		
-		final GridPane contentPane = new GridPane();						
-		contentPane.setPadding(new Insets(10, 40, 10, 30));
-		contentPane.setHgap(10);
-		contentPane.setVgap(10);	
+		final VBox contentPane = new VBox();
 		
 		final Node borderedGridOptionsPane = Borders.wrap(
 				gridOptionsPane).etchedBorder().title("Grid options").buildAll();
 		
 		final Node borderedPuzzleOptionsPane = Borders.wrap(
-				puzzleOptionsPane).etchedBorder().title("Puzzle options").buildAll();
+				puzzleOptionsPane).etchedBorder().title("Puzzle options").buildAll();		
 		
-		contentPane.add(borderedGridOptionsPane, 0, 0);
-		contentPane.add(borderedPuzzleOptionsPane, 0, 1);
+		contentPane.getChildren().addAll(borderedGridOptionsPane, borderedPuzzleOptionsPane);
 		
 		return contentPane;
+	}
+	
+	private void setMaxComboWidths(final double width) {				
+		creationModeCombo.setMaxWidth(width);
+		gradingCombo.setMaxWidth(width);
+		symbolTypeCombo.setMaxWidth(width);
+		symmetryCombo.setMaxWidth(width);
+		gridDimensionCombo.setMaxWidth(width);
 	}
 	
 	private void onCreationModeChanged() {

@@ -55,6 +55,7 @@ public class GameWindow extends Application {
 	private static final String GAME_MENU_COMMAND = Resources.getTranslation("menubar.game");	
 	private static final String NEW_PUZZLE_COMMAND = Resources.getTranslation("game.new");
 	private static final String OPEN_PUZZLE_COMMAND = Resources.getTranslation("game.open");
+	private static final String EXPORT_TO_PDF_COMMAND = "game.export_to_pdf";
 	private static final String GENERATE_AND_EXPORT_COMMAND = "game.generate_and_export";
 	private static final String QUIT_COMMAND = "game.quit";
 	
@@ -130,7 +131,7 @@ public class GameWindow extends Application {
                
 		final Scene scene = new Scene(mainPane, 800, 600);
 		//TODO: Read application name from properties
-		stage.setTitle("SuDonkey");
+		stage.setTitle("SuDonkeyFX");
         stage.setScene(scene);
         
         stage.setOnCloseRequest(event -> windowActionEventHandler.onWindowClose(event));
@@ -160,9 +161,13 @@ public class GameWindow extends Application {
         newMenuItem.setId(NEW_PUZZLE_COMMAND);        
         
         final MenuItem openMenuItem = new MenuItem(OPEN_PUZZLE_COMMAND);
-        openMenuItem.setOnAction(event -> fileActionEventHandler.onOpenMenuItemSelected(event, stage));
+        openMenuItem.setOnAction(event -> fileActionEventHandler.onOpenMenuItemSelected(stage));
         openMenuItem.setAccelerator(KeyCombination.keyCombination("Ctrl+O"));
         openMenuItem.setId(OPEN_PUZZLE_COMMAND); 
+        
+        final MenuItem exportToPdfMenuItem = new MenuItem(Resources.getTranslation(EXPORT_TO_PDF_COMMAND));
+        exportToPdfMenuItem.setOnAction(event -> fileActionEventHandler.onExportToPdfAction(stage));
+        exportToPdfMenuItem.setId(EXPORT_TO_PDF_COMMAND);
         
         final MenuItem generateAndExportMenuItem = new MenuItem(
         		Resources.getTranslation(GENERATE_AND_EXPORT_COMMAND));
@@ -175,8 +180,8 @@ public class GameWindow extends Application {
         quitMenuItem.setAccelerator(KeyCombination.keyCombination("Ctrl+Q"));
         quitMenuItem.setId(QUIT_COMMAND);                
         
-        gameMenu.getItems().addAll(newMenuItem, openMenuItem, new SeparatorMenuItem(),
-        		generateAndExportMenuItem, new SeparatorMenuItem(), quitMenuItem);
+        gameMenu.getItems().addAll(newMenuItem, openMenuItem, new SeparatorMenuItem(), exportToPdfMenuItem,
+        		new SeparatorMenuItem(), generateAndExportMenuItem, new SeparatorMenuItem(), quitMenuItem);
         
         return gameMenu;
 	}

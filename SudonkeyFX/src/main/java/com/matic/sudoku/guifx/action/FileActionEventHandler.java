@@ -22,13 +22,15 @@ package com.matic.sudoku.guifx.action;
 
 import java.io.File;
 
-import javafx.event.ActionEvent;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
+import com.matic.sudoku.guifx.window.PdfExporterOptions;
+import com.matic.sudoku.guifx.window.PdfExporterWindow;
+
 public class FileActionEventHandler {
 
-	public void onOpenMenuItemSelected(final ActionEvent event, final Window parent) {
+	public void onOpenMenuItemSelected(final Window parent) {
 		final FileChooser fileChooser = new FileChooser();
 		fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
 		fileChooser.getExtensionFilters().addAll(
@@ -41,5 +43,12 @@ public class FileActionEventHandler {
 		if(selectedFile != null) {
 			//Open selected file
 		}
+	}
+	
+	public void onExportToPdfAction(final Window parent) {
+		final PdfExporterWindow pdfExporterWindow = new PdfExporterWindow(parent);
+		final PdfExporterOptions pdfExporterOptions = pdfExporterWindow.showAndWait();
+		
+		System.out.println(pdfExporterOptions);
 	}
 }

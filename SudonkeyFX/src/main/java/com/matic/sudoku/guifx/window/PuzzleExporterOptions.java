@@ -36,7 +36,7 @@ import com.matic.sudoku.logic.LogicSolver.Grading;
  */
 public class PuzzleExporterOptions {
 	
-	protected enum Ordering {
+	public enum Ordering {
 		RANDOM(Resources.getTranslation("generate.random")), 
 		DIFFICULTY(Resources.getTranslation("generate.difficulty"));
 		

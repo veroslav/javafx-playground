@@ -40,7 +40,7 @@ public class GeneratorActionEventHandler {
 	 */
 	public void onGenerateNewPuzzle(final ActionEvent event, final Window owner,
 			final ClassicGameBoard gameBoard) {	
-		final PuzzleCreatorWindow creatorWindow = new PuzzleCreatorWindow();
+		final PuzzleCreatorWindow creatorWindow = new PuzzleCreatorWindow(owner);
 		final PuzzleCreatorOptions creatorOptions = creatorWindow.showAndWait();
 		
 		if(creatorOptions == null) {
