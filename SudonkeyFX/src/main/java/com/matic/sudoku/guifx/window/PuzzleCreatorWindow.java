@@ -42,7 +42,7 @@ import org.controlsfx.tools.Borders;
 import com.matic.sudoku.Resources;
 import com.matic.sudoku.generator.Generator.Symmetry;
 import com.matic.sudoku.guifx.board.GameBoard;
-import com.matic.sudoku.guifx.board.GameBoard.SymbolType;
+import com.matic.sudoku.io.KeyInputManager.SymbolType;
 import com.matic.sudoku.logic.LogicSolver.Grading;
 
 /**
@@ -103,7 +103,7 @@ public class PuzzleCreatorWindow {
 	}
 	
 	private void initComponents() {
-		setMaxComboWidths(Resources.Gui.COMBOBOX_MAX_WIDTH);
+		setPreferredComboWidths(Resources.Gui.COMBOBOX_MAX_WIDTH);
 		
 		creationModeCombo.getItems().addAll(Resources.getTranslation("generate.new_puzzle"),
 				Resources.getTranslation("generate.blank_puzzle"));
@@ -154,8 +154,8 @@ public class PuzzleCreatorWindow {
 		gridOptionsPane.getColumnConstraints().addAll(labelColumnConstraints, fieldColumnConstraints);
 		
 		final List<Label> gridOptionLabels = Arrays.asList(
-				new Label(Resources.getTranslation("puzzle.create") + ":"),
-				new Label(Resources.getTranslation("puzzle.type") + ":"));
+				new Label(Resources.getTranslation("puzzle.create") + ": "),
+				new Label(Resources.getTranslation("puzzle.type") + ": "));
 		
 		gridOptionLabels.stream().forEach(label -> GridPane.setHalignment(label, HPos.RIGHT));
 				
@@ -174,9 +174,9 @@ public class PuzzleCreatorWindow {
 		puzzleOptionsPane.getColumnConstraints().addAll(labelColumnConstraints, fieldColumnConstraints);
 		
 		final List<Label> puzzleOptionLabels = Arrays.asList(
-				new Label(Resources.getTranslation("symmetry.name") + ":"),
-				new Label(Resources.getTranslation("generate.difficulty") + ":"),
-				new Label(Resources.getTranslation("symbols.label") + ":"));
+				new Label(Resources.getTranslation("symmetry.name") + ": "),
+				new Label(Resources.getTranslation("generate.difficulty") + ": "),
+				new Label(Resources.getTranslation("symbols.label") + ": "));
 		
 		puzzleOptionLabels.stream().forEach(label -> GridPane.setHalignment(label, HPos.RIGHT));
 				
@@ -206,12 +206,18 @@ public class PuzzleCreatorWindow {
 		return contentPane;
 	}
 	
-	private void setMaxComboWidths(final double width) {				
+	private void setPreferredComboWidths(final double width) {				
 		creationModeCombo.setMaxWidth(width);
 		gradingCombo.setMaxWidth(width);
 		symbolTypeCombo.setMaxWidth(width);
 		symmetryCombo.setMaxWidth(width);
 		gridDimensionCombo.setMaxWidth(width);
+		
+		creationModeCombo.setMinWidth(width);
+		gradingCombo.setMinWidth(width);
+		symbolTypeCombo.setMinWidth(width);
+		symmetryCombo.setMinWidth(width);
+		gridDimensionCombo.setMinWidth(width);
 	}
 	
 	private void onCreationModeChanged() {

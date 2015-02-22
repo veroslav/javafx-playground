@@ -24,7 +24,7 @@ import java.util.List;
 
 import com.matic.sudoku.Resources;
 import com.matic.sudoku.generator.Generator.Symmetry;
-import com.matic.sudoku.guifx.board.GameBoard.SymbolType;
+import com.matic.sudoku.io.KeyInputManager.SymbolType;
 import com.matic.sudoku.logic.LogicSolver.Grading;
 
 /**

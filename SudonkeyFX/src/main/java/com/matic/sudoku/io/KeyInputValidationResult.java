@@ -18,7 +18,7 @@
 *
 */
 
-package com.matic.sudoku.guifx.board;
+package com.matic.sudoku.io;
 
 public class KeyInputValidationResult {
 
@@ -79,3 +79,4 @@ public class KeyInputValidationResult {
 				+ ", value=" + value + "]";
 	}
 }
+

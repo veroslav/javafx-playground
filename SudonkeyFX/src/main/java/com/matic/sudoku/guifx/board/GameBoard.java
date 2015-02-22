@@ -20,41 +20,7 @@
 
 package com.matic.sudoku.guifx.board;
 
-import com.matic.sudoku.Resources;
-
 public interface GameBoard {	
-	
-	public enum SymbolType {
-		DIGITS(Resources.getTranslation("symbols.digits")),
-		LETTERS(Resources.getTranslation("symbols.letters"));
-		
-		private final String description;
-		
-		SymbolType(final String type) {
-			this.description = type;
-		}
-		
-		public String getDescription() {
-			return description;
-		}
-		
-		public static SymbolType fromString(final String symbols) {
-			if(symbols != null) {
-				for(final SymbolType type : SymbolType.values()) {
-					if(type.description.equals(symbols)) {
-						return type;
-					}
-				}
-			}
-			
-			throw new IllegalArgumentException("No symbol type with description "
-					+ symbols + " found");
-		}
-		
-		public static SymbolType getRandom() {
-			return values()[(int)(Math.random() * values().length)];
-		}
-	}
 	
 	// Dimension of a 4x4 puzzle
 	public static final int DIMENSION_4x4 = 2;

@@ -96,7 +96,12 @@ public class Resources {
 	 *            Property value
 	 */
 	public static void setProperty(final String propName, final String propValue) {
-		APPLICATION_PREFERENCES.put(propName, propValue);
+		if(propValue != null) {
+			APPLICATION_PREFERENCES.put(propName, propValue);
+		}
+		else {
+			APPLICATION_PREFERENCES.remove(propName);
+		}
 	}
 
 	/**
@@ -174,7 +179,7 @@ public class Resources {
 	
 	public static class Gui {
 		//Max size, in pixels, of a label used in a layout
-		public static final int MAX_LABEL_COLUMN_WIDTH = 160;
+		public static final int MAX_LABEL_COLUMN_WIDTH = 150;
 		
 		//Max size, in pixels, of comboboxes used in a layout
 		public static final int COMBOBOX_MAX_WIDTH = 300;

@@ -33,6 +33,8 @@ import javafx.event.ActionEvent;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
@@ -60,8 +62,8 @@ import org.controlsfx.validation.Validator;
 
 import com.matic.sudoku.Resources;
 import com.matic.sudoku.generator.Generator.Symmetry;
-import com.matic.sudoku.guifx.board.GameBoard.SymbolType;
 import com.matic.sudoku.guifx.window.PuzzleExporterOptions.Ordering;
+import com.matic.sudoku.io.KeyInputManager.SymbolType;
 import com.matic.sudoku.logic.LogicSolver.Grading;
 
 /**
@@ -150,7 +152,7 @@ public class PuzzleExporterWindow {
 	private List<Grading> getSelectedGradings() {
 		final ObservableList<String> selectedGradings = gradingCheckCombo.getCheckModel().getCheckedItems();		
 		final List<Grading> chosenGradings = selectedGradings.stream().map(
-				gradingName -> Grading.fromString(gradingName)).collect(Collectors.toList());
+				Grading::fromString).collect(Collectors.toList());
 		
 		return Collections.unmodifiableList(chosenGradings);
 	}
@@ -158,7 +160,7 @@ public class PuzzleExporterWindow {
 	private List<Symmetry> getSelectedSymmetries() {
 		final ObservableList<String> selectedSymmetries = symmetryCheckCombo.getCheckModel().getCheckedItems();
 		final List<Symmetry> chosenSymmetries = selectedSymmetries.stream().map(
-				symmetryName -> Symmetry.fromString(symmetryName)).collect(Collectors.toList());
+				Symmetry::fromString).collect(Collectors.toList());
 		
 		return Collections.unmodifiableList(chosenSymmetries);
 	}
@@ -189,10 +191,10 @@ public class PuzzleExporterWindow {
 	}
 	
 	private void initComponents() {
-		setMaxComboWidths(Resources.Gui.COMBOBOX_MAX_WIDTH);
+		setPreferredComboWidths(Resources.Gui.COMBOBOX_MAX_WIDTH);
 		
 		outputPathField.setPromptText("Path to the file to be used as a destination for generated PDF file");
-		outputPathField.setPrefColumnCount(30);
+		outputPathField.setPrefColumnCount(31);
 		outputPathField.setEditable(false);		
 		
 		puzzleCountField.setPrefColumnCount(MAX_PUZZLE_EXPORT_DIGITS - 1);		
@@ -242,7 +244,7 @@ public class PuzzleExporterWindow {
 		okButton.setDisable(!validateInput());		
 		okButton.addEventFilter(ActionEvent.ACTION, event -> {
 			//Prevent window from closing until player input has been validated
-			if(!validateInput()) {
+			if(!validateInput() || !onOverwriteExistingFile()) {
 				event.consume();
 			}
 		});
@@ -251,6 +253,23 @@ public class PuzzleExporterWindow {
 		
 		window.setResizable(true);
 		window.getDialogPane().setContent(layoutContent());
+	}
+	
+	private boolean onOverwriteExistingFile() {
+		final boolean outputPathExists = new File(outputPathField.getText()).exists();
+		if(outputPathExists) {
+			final Alert confirmFileReplaceAlert = new Alert(AlertType.CONFIRMATION);
+			confirmFileReplaceAlert.initOwner(window.getOwner());
+			confirmFileReplaceAlert.setContentText(Resources.getTranslation("file.exists.message"));
+			confirmFileReplaceAlert.setTitle(Resources.getTranslation("file.exists.title"));				
+			confirmFileReplaceAlert.setHeaderText(null);
+			
+			final Optional<ButtonType> playerChoice = confirmFileReplaceAlert.showAndWait();
+			if(playerChoice.get() != ButtonType.OK) {
+				return false;
+			}
+		}
+		return true;
 	}
 	
 	private void setupInputValidation(final Button exportButton) {
@@ -334,7 +353,7 @@ public class PuzzleExporterWindow {
 		return mainPane;
 	}
 	
-	private void setMaxComboWidths(final double width) {		
+	private void setPreferredComboWidths(final double width) {		
 		symmetryCheckCombo.setMaxWidth(width);
 		gradingCheckCombo.setMaxWidth(width);
 		symbolTypeCombo.setMaxWidth(width);		
@@ -367,8 +386,8 @@ public class PuzzleExporterWindow {
 		formattingPane.getColumnConstraints().addAll(labelColumnConstraints, fieldColumnConstraints);
 		
 		final List<Label> labels = Arrays.asList(
-				new Label(Resources.getTranslation("export.puzzle_ordering") + ":"),
-				new Label(Resources.getTranslation("export.puzzles_per_page") + ":"));
+				new Label(Resources.getTranslation("export.puzzle_ordering") + ": "),
+				new Label(Resources.getTranslation("export.puzzles_per_page") + ": "));
 			
 		labels.stream().forEach(label -> GridPane.setHalignment(label, HPos.RIGHT));
 		
@@ -393,11 +412,11 @@ public class PuzzleExporterWindow {
 		
 		generatorOptionsPane.getColumnConstraints().addAll(labelColumnConstraints, fieldColumnConstraints);
 		
-		final List<Label> labels = Arrays.asList(new Label(Resources.getTranslation("puzzle.create") + ":"),
-				new Label(Resources.getTranslation("symbols.label") + ":"), 
-				new Label(Resources.getTranslation("generate.difficulty") + ":"), 
-				new Label(Resources.getTranslation("symmetry.name") + ":"),
-				new Label(Resources.getTranslation("export.puzzle_count") + ":"));
+		final List<Label> labels = Arrays.asList(new Label(Resources.getTranslation("puzzle.create") + ": "),
+				new Label(Resources.getTranslation("symbols.label") + ": "), 
+				new Label(Resources.getTranslation("generate.difficulty") + ": "), 
+				new Label(Resources.getTranslation("symmetry.name") + ": "),
+				new Label(Resources.getTranslation("export.puzzle_count") + ": "));
 		
 		labels.stream().forEach(label -> GridPane.setHalignment(label, HPos.RIGHT));
 				

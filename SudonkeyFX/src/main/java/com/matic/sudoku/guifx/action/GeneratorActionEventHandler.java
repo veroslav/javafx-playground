@@ -20,26 +20,29 @@
 
 package com.matic.sudoku.guifx.action;
 
+import javafx.stage.Window;
+
 import com.matic.sudoku.guifx.board.ClassicGameBoard;
 import com.matic.sudoku.guifx.window.PuzzleCreatorOptions;
 import com.matic.sudoku.guifx.window.PuzzleCreatorWindow;
 import com.matic.sudoku.guifx.window.PuzzleExporterOptions;
 import com.matic.sudoku.guifx.window.PuzzleExporterWindow;
 
-import javafx.event.ActionEvent;
-import javafx.stage.Window;
-
+/**
+ * An action handler for actions related to the generation of puzzles
+ * 
+ * @author vedran
+ *
+ */
 public class GeneratorActionEventHandler {
 
 	/**
 	 * Act on player choosing to generate and show a new puzzle
 	 * 
-	 * @param event Originating action event
 	 * @param owner Dialog owner
 	 * @param gameBoard Game board to be populated with generated puzzle
 	 */
-	public void onGenerateNewPuzzle(final ActionEvent event, final Window owner,
-			final ClassicGameBoard gameBoard) {	
+	public void onGenerateNewPuzzle(final Window owner, final ClassicGameBoard gameBoard) {	
 		final PuzzleCreatorWindow creatorWindow = new PuzzleCreatorWindow(owner);
 		final PuzzleCreatorOptions creatorOptions = creatorWindow.showAndWait();
 		
@@ -48,12 +51,10 @@ public class GeneratorActionEventHandler {
 			return;
 		}
 		
-		final int selectedDimension = creatorOptions.getGridDimension();
-		if(selectedDimension != gameBoard.getDimension()) {
-			gameBoard.setDimension(selectedDimension);
-		}
+		gameBoard.onGridChanged(creatorOptions.getGridDimension(), 
+				creatorOptions.getSymbolType());
 		
-		//TODO: Process creatorResult
+		//TODO: Process creatorOptions
 		System.out.println(creatorOptions);
 	}
 	

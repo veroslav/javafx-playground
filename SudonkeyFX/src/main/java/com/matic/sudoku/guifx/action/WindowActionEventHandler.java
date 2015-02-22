@@ -29,6 +29,7 @@ import javafx.event.Event;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
+import javafx.stage.Window;
 
 /**
  * A handler for taking care of window related events, such as window closing.
@@ -42,9 +43,10 @@ public class WindowActionEventHandler {
 	 * Handle player choosing to close the game.
 	 * 
 	 * @param event Originating window event
+	 * @param owner Parent window, owner of the confirmation window
 	 */
-	public void onWindowClose(final Event event) {
-		final boolean isClosed = handleWindowClosing();
+	public void onWindowClose(final Event event, final Window owner) {
+		final boolean isClosed = handleWindowClosing(owner);
         if(isClosed) {
             //User chose to close the application, quit
             Platform.exit();
@@ -55,8 +57,9 @@ public class WindowActionEventHandler {
         }		
 	}
 	
-	private boolean handleWindowClosing() {
+	private boolean handleWindowClosing(final Window owner) {
 		final Alert confirmAlert = new Alert(AlertType.CONFIRMATION);
+		confirmAlert.initOwner(owner);
 		confirmAlert.setContentText(Resources.getTranslation("game.quit.question"));
 		confirmAlert.setTitle(Resources.getTranslation("game.quit.confirm"));				
 		confirmAlert.setHeaderText(null);

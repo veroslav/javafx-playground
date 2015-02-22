@@ -35,30 +35,14 @@ import com.matic.sudoku.guifx.action.undo.UndoableCellValueEditAction;
 import com.matic.sudoku.guifx.action.undo.UndoableColorEditAction;
 import com.matic.sudoku.guifx.action.undo.UndoableGameBoardAction;
 import com.matic.sudoku.guifx.action.undo.UndoablePencilmarkEditAction;
-import com.matic.sudoku.guifx.board.KeyInputValidationResult.ValidationResult;
+import com.matic.sudoku.io.KeyInputManager;
+import com.matic.sudoku.io.KeyInputManager.SymbolType;
+import com.matic.sudoku.io.KeyInputValidationResult;
 import com.sun.javafx.tk.FontLoader;
 import com.sun.javafx.tk.FontMetrics;
 import com.sun.javafx.tk.Toolkit;
 
 public class ClassicGameBoard extends Canvas implements GameBoard {
-	
-	public static final String[] KEY_NUMBER_ACTIONS = {"1", "2", "3", "4",
-		"5", "6", "7", "8", "9"};
-	
-	public static final String[] LETTER_KEY_ACTIONS = { "A", "B", "C", "D", "E", "F", "G", "H", "I",
-		"J", "K", "L", "M", "N", "O", "P" };
-	
-	private static final String NUMPAD_KEY_CODE_NAME = "Numpad ";
-	
-	//Default value entered in a cell when mouse is clicked
-	private static final String MOUSE_CLICK_DEFAULT_INPUT_VALUE = KEY_NUMBER_ACTIONS[0];
-	
-	/**
-	 * Color Palette: 	Yellow: 234,184,57
-						Green: 126,178,109
-						Blue: 31,120,193
-						Orange: 239,132,60
-	 */
 	
 	private static Color THICK_LINE_COLOR = Color.BLACK;
 	private static Color INNER_LINE_COLOR = Color.BLACK;
@@ -66,12 +50,12 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 	//Color of rectangular area surrounding an active cell
 	private static final Color PICKER_COLOR = Color.rgb(220, 0, 0);
 	
-	private static Color BACKGROUND_COLOR = Color.rgb(234,184,57);
+	private static Color DEFAULT_BACKGROUND_COLOR = Color.rgb(234,184,57);
 	private static Color NORMAL_FONT_COLOR = Color.BLACK;
 	private static final Color PENCILMARK_FONT_COLOR = Color.rgb(0, 43, 54);
 	
 	//Available colors the player can use for cell selections
-	public static final Color[] CELL_SELECTION_COLORS = {BACKGROUND_COLOR,
+	public static final Color[] CELL_SELECTION_COLORS = {DEFAULT_BACKGROUND_COLOR,
 		Color.rgb(253, 188, 75), Color.rgb(255, 144, 150),
 		Color.rgb(244, 119, 80), Color.rgb(29, 153, 243),
 		Color.rgb(46, 204, 113)};
@@ -95,13 +79,12 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 	private static final double PENCILMARK_FONT_SIZE_PERCENT = 0.9;
 	
 	//Digit -> Symbol shown on the board - mapping
-	private Map<Integer, String> digitToSymbolMappings;
-	
+	private final Map<Integer, String> digitToSymbolMappings = new HashMap<>();
+		
 	//Symbol shown on the board -> Digit - mapping
-	private Map<String, Integer> symbolToDigitMappings;
-	
-	//Indicates how the board entries are represented (either digits or letters)
-	private SymbolType symbolType;
+	private final Map<String, Integer> symbolToDigitMappings = new HashMap<>();
+		
+	private SymbolType symbolType = null;
 	
 	//The symbol that is put into a cell after a player left-clicks on it
 	private String mouseClickInputValue;
@@ -125,10 +108,10 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 	private Cell[][] cells;
 	
 	//Board size, for a 9x9 board, the dimension is 3
-	private int dimension;
+	private int dimension = -1;
 	
 	//Size of a region (box, row or column), 9 for a 9x9 board
-	public int unit;
+	public int unit = -1;
 	
 	//Width of a board's inner box (in pixels) on screen
 	private int boxWidth;
@@ -157,9 +140,6 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 	//Distance (in pixels) between two adjacent inner grid lines
 	private int cellWidth;
 	
-	//Width of the stroke used for drawing the picker
-	private int pickerStrokeWidth;
-	
 	//Area within a cell available to a pencilmark to draw itself (cellWidth / dimension)
 	private int pencilmarkWidth;
 	
@@ -172,7 +152,10 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 	//Font used for drawing givens in a puzzle
 	private Font givenDigitFont;
 	
-	public ClassicGameBoard(final int dimension) {		
+	//Currently set color for paint board and cell background
+	private Color backgroundColor;
+	
+	public ClassicGameBoard(final int dimension, final SymbolType symbolType) {		
 		this.dimension = dimension;
 		unit = dimension * dimension;		
 		
@@ -185,17 +168,17 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 			draw(true, true);
 		});
 		
-		mouseClickInputValue = MOUSE_CLICK_DEFAULT_INPUT_VALUE;
 		cellColorIndex = 1;
 		
 		//Draw all pencilmarks by default (focus OFF)
 		pencilmarkFilterMask = -1;
 		
+		backgroundColor = DEFAULT_BACKGROUND_COLOR;
+		
 		symbolsFilledCount = cellPickerCol = cellPickerRow = 0;
 		colorCount = pencilmarkCount = 0;
 		
-		setSymbolType(SymbolType.DIGITS);						
-		initCells(dimension);
+		onGridChanged(dimension, symbolType);
 	}
 	
 	@Override
@@ -218,48 +201,43 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 		return dimension;
 	}
 	
-	public void setDimension(final int dimension) {
+	/**
+	 * Update grid dimensions and allowed key input values based on new grid properties
+	 * 
+	 * @param dimension New grid dimension
+	 * @param symbolType New symbol type
+	 */
+	public void onGridChanged(final int dimension, final SymbolType symbolType) {
+		if(this.dimension == dimension && this.symbolType == symbolType) {
+			return;
+		}
+		
+		this.symbolType = dimension > GameBoard.DIMENSION_9x9 && symbolType == SymbolType.DIGITS? 
+				SymbolType.LETTERS : symbolType;
 		this.dimension = dimension;
 		unit = dimension * dimension;
 		
-		initCells(dimension);
-		updateDimensions();
+		digitToSymbolMappings.clear();
+		symbolToDigitMappings.clear();
 		
-		draw(true, true);
-	}
-	
-	/*
-	* Check if a symbol type is possible to use for this. For larger
-	* boards (dimension > 3), there are simply not enough numbers to use, so
-	* even though such a symbol type is requested, it will be set to
-	* SymbolType.LETTERS in this case
-	*/
-	public void setSymbolType(final SymbolType symbolType) {
-		if(symbolType == this.symbolType) {
-			return;
-		}
-		this.symbolType = symbolType;
-		digitToSymbolMappings = new HashMap<Integer, String>();
-		symbolToDigitMappings = new HashMap<String, Integer>();
-	
 		int symbolCount = 1;
 		while(symbolCount <= unit) {
-			if(symbolType == SymbolType.LETTERS) {
-				digitToSymbolMappings.put(symbolCount, LETTER_KEY_ACTIONS[symbolCount - 1]);
-				symbolToDigitMappings.put(LETTER_KEY_ACTIONS[symbolCount - 1], symbolCount);
-			} 
-			else {
-				if(symbolCount < 10) {
-					digitToSymbolMappings.put(symbolCount, String.valueOf(symbolCount));
-					symbolToDigitMappings.put(String.valueOf(symbolCount), symbolCount);
-				} 
-				else {
-					digitToSymbolMappings.put(symbolCount, LETTER_KEY_ACTIONS[symbolCount - 10]);
-					symbolToDigitMappings.put(LETTER_KEY_ACTIONS[symbolCount - 10], symbolCount);
-				}
+			if(this.symbolType == SymbolType.LETTERS) {
+				digitToSymbolMappings.put(symbolCount, KeyInputManager.LETTER_KEY_ACTION_NAMES[symbolCount - 1]);
+				symbolToDigitMappings.put(KeyInputManager.LETTER_KEY_ACTION_NAMES[symbolCount - 1], symbolCount);
+			}
+			else {				
+				digitToSymbolMappings.put(symbolCount, String.valueOf(symbolCount));
+				symbolToDigitMappings.put(String.valueOf(symbolCount), symbolCount);				
 			}
 			++symbolCount;
-		}
+		}		
+		
+		mouseClickInputValue = digitToSymbolMappings.get(KeyInputManager.DIGIT_KEY_ACTION_VALUES[0]);
+		
+		initCells(dimension);
+		updateDimensions();
+		draw(true, true);
 	}
 	
 	/**
@@ -380,12 +358,11 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 	private void drawBackground(final GraphicsContext context) {
 		context.clearRect(0, 0, this.getWidth(), this.getHeight());
 		
-		context.setFill(BACKGROUND_COLOR);
+		context.setFill(DEFAULT_BACKGROUND_COLOR);
 		context.fillRect(0, 0, this.getWidth(), this.getHeight());
 	}
 	
-	private void drawThickLines(final GraphicsContext context) {
-		//g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+	private void drawThickLines(final GraphicsContext context) {		
 		context.setFill(THICK_LINE_COLOR);
 		
 		final int lineDistance = thickLineWidth + boxWidth;
@@ -470,17 +447,14 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 		}
 	}
 	
-	private void renderCellContent(final GraphicsContext context, final Cell cell, final int cellX, final int cellY) {
-		// Enable antialiasing for font rendering
-		// g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
+	private void renderCellContent(final GraphicsContext context, final Cell cell, final int cellX, final int cellY) {		
 		// Set the cell's background color and draw it
 		context.setFill(CELL_SELECTION_COLORS[cell.getBackgroundColorIndex()]);
 		context.fillRect(cellX, cellY, cellWidth, cellWidth);
 		
 		final int digit = cell.getDigit();
 		if(digit > 0) {
-			drawCellDigit(context, cell, cellX, cellY, digit);
+			drawCellValue(context, cell, cellX, cellY, digit);
 		} 
 		else if(cell.getPencilmarkCount() > 0) {
 			// Set pencilmark font and color and draw this cell's pencilmarks
@@ -488,8 +462,8 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 		}
 	}
 	
-	private void drawCellDigit(final GraphicsContext context, final Cell cell,
-			final int cellX, final int cellY, final int digit) {
+	private void drawCellValue(final GraphicsContext context, final Cell cell,
+			final int cellX, final int cellY, final int value) {
 		// Set font and font color for this cell and draw entered digit value
 		if(cell.isGiven()) {
 			context.setFont(givenDigitFont);
@@ -499,7 +473,7 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 		}		
 		context.setFill(cell.getFontColor());
 		
-		final String symbol = digitToSymbolMappings.get(digit);
+		final String symbol = digitToSymbolMappings.get(value);
 		
 		final FontLoader fontLoader = Toolkit.getToolkit().getFontLoader();
 		final Font contextFont = context.getFont();
@@ -540,7 +514,7 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 	
 	private void drawPicker(final GraphicsContext context, final int x, final int y) {		
 		context.setStroke(PICKER_COLOR);
-		context.setLineWidth(thickLineWidth + 2);
+		context.setLineWidth(thickLineWidth + 1);
 		
 		context.strokeRect(x, y, cellWidth, cellWidth);
 	}
@@ -554,7 +528,6 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 		
 		thickLineWidth = (int)(THICK_LINE_THICKNESS * usableDrawArea);
 		innerLineWidth = (int)(INNER_LINE_THICKNESS * usableDrawArea);
-		pickerStrokeWidth = thickLineWidth + 2;
 		
 		// Prevent line from not being drawn if too thin
 		if(thickLineWidth == 0) {
@@ -593,7 +566,7 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 	}
 	
 	/**
-	 * Handle mouse movement events. This is used for detecting correct picker sell.
+	 * Handle mouse movement events. This is used for detecting correct picker cell.
 	 * 
 	 * @param mouseX The mouse X coordinate
 	 * @param mouseY The mouse Y coordinate
@@ -668,7 +641,7 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 	 */
 	public UndoableGameBoardAction onKeyTyped(final KeyCode keyCode, final boolean editAllowed,
 			final boolean focusOn) {		
-		final KeyInputValidationResult validationResult = validateKeyInput(keyCode);
+		final KeyInputValidationResult validationResult = KeyInputManager.validateKeyInput(keyCode, dimension, symbolType);
 		
 		switch(validationResult.getValidationResult()) {
 		case INVALID_INPUT:
@@ -730,30 +703,6 @@ public class ClassicGameBoard extends Canvas implements GameBoard {
 		default:
 			return;
 		}
-	}
-	
-	private KeyInputValidationResult validateKeyInput(final KeyCode keyCode) {		
-		if(keyCode.isArrowKey()) {
-			return new KeyInputValidationResult(
-					ValidationResult.DIRECTION_CHANGE, keyCode.getName());
-		}
-		if(keyCode == KeyCode.DELETE || keyCode == KeyCode.BACK_SPACE) {
-			return new KeyInputValidationResult(
-					ValidationResult.SYMBOL_DELETION, keyCode.getName());
-		}				
-		final String keyCodeName = keyCode.getName();		
-		
-		if(keyCode.isKeypadKey() && keyCode.isDigitKey()) {
-			if(keyCodeName.startsWith(NUMPAD_KEY_CODE_NAME)) {
-				final String digit = keyCodeName.substring(NUMPAD_KEY_CODE_NAME.length()); 							
-				return new KeyInputValidationResult(ValidationResult.SYMBOL_ENTRY, digit);
-			}
-		}
-		if(keyCode.isLetterKey() || keyCode.isDigitKey()) {
-			return new KeyInputValidationResult(ValidationResult.SYMBOL_ENTRY, keyCodeName);
-		}
-		
-		return new KeyInputValidationResult(ValidationResult.INVALID_INPUT, null);
 	}
 	
 	private UndoableGameBoardAction handleSymbolEntry(final String entry, final boolean isPencilmark) {			

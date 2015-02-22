@@ -35,19 +35,19 @@ import javafx.scene.input.KeyEvent;
  */
 public class KeyActionEventHandler {
 	
-	private final ClassicGameBoard gameBoard;
-	
-	public KeyActionEventHandler(final ClassicGameBoard gameBoard) {
-		this.gameBoard = gameBoard;
-	}
-
-	public UndoableGameBoardAction onKeyTyped(final KeyEvent event) {						
+	public UndoableGameBoardAction onKeyTyped(final KeyEvent event, final ClassicGameBoard gameBoard) {						
 		final boolean editAllowed = true;
 		final boolean focusOn = false;
 		
-		final UndoableGameBoardAction action = gameBoard.onKeyTyped(
-				event.getCode(), editAllowed, focusOn);
-		
-		return action;
+		if(!isModifierDown(event)) {
+			return gameBoard.onKeyTyped(event.getCode(), editAllowed, focusOn);
+		}
+
+		return null;
+	}
+	
+	private boolean isModifierDown(final KeyEvent event) {
+		return event.isAltDown() || event.isControlDown() || 
+				event.isMetaDown() || event.isShiftDown();
 	}
 }
