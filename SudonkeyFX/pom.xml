@@ -6,7 +6,7 @@
   
   <properties>
   	<jar.final.name>sudonkey-fx</jar.final.name>
-  	<main.class>com.matic.sudoku.guifx.window.GameWindow</main.class>
+  	<main.class>com.matic.sudoku.guifx.window.GameWindowFX</main.class>
   </properties>
   
   <build>
